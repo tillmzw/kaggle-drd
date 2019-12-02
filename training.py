@@ -76,7 +76,7 @@ class Trainer():
                 running_loss += loss.item()
                 if self._writer:
                     # record training loss
-                    self._writer.add_scalar("Train/Loss", loss.item(), i)
+                    self._writer.add_scalar("Train/Loss", loss.item(), i * (epoch + 1))
                 if i % 2000 == 1999:    # print every 2000 mini-batches
                     logger.debug('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / 2000))
                     # TODO: test against verification set
