@@ -45,7 +45,7 @@ class Trainer():
         # we have a very unbalanced data set so we need to add weight to the loss function
         if hasattr(dataloader.dataset, "class_weights"):
             weights = dataloader.dataset.class_weights()
-            if weights:
+            if weights is not None:
                 logger.info("Applying weights:\n\t%s" % "\n\t".join(
                     ("class %d: %.2f" % (i, w) for i, w in enumerate(weights))
                 ))
