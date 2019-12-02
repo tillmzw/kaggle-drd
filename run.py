@@ -31,7 +31,7 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", action="store_true", default=False)
     parser.add_argument("--device", choices=("cpu", "cuda", "auto"), default="auto", help="Run on this device")
     parser.add_argument("--validate", action="store_true", default=False, help="Run validation tests")
-    parser.add_argument("-x", "--stats", type=str, help="Write a validation report to this file. Requires --validation")
+    parser.add_argument("-x", "--stats", type=str, default="/dev/null", help="Write a validation report to this file. Requires --validation")
     parser.add_argument("--train", action="store_true", default=False, help="Run training phase")
     parser.add_argument("--show", action="store_true", default=False, help="Show the first batch of validation images")
     parser.add_argument("--log", default=None, help="Log file")
@@ -67,6 +67,15 @@ if __name__ == "__main__":
     net = Net(device=args.device)
     data_dir = os.path.join(args.dir, "data")
 
+    if args.validate:
+        testset = RetinopathyDataset(
+                os.path.join(data_dir, "testLabels.csv"), os.path.join(data_dir, "test"), 
+                limit=args.limit, 
+                device=args.device)
+        testloader = DataLoader(testset, batch_size=args.batch)
+    else:
+        testset, testloader = None, None
+
     if args.train:
         logger.info("Starting training")
 
@@ -78,7 +87,8 @@ if __name__ == "__main__":
         trainloader = DataLoader(trainset, batch_size=args.batch, shuffle=True)
 
         trainer = training.AdamTrainer(epochs=args.epochs, summary={})
-        trainer.train(net, trainloader, args.state) 
+        # TODO: is it sensible to use the same data set size as for training for the validation loader?
+        trainer.train(net, trainloader, args.state, validation_dataloader=testloader) 
         #net.train(trainloader, train_iterations=args.epochs, state_file=args.state)
     else:
         if not args.state or not os.path.isfile(args.state):
@@ -87,11 +97,6 @@ if __name__ == "__main__":
         net.load_state_dict(torch.load(args.state))
 
     if args.validate:
-        testset = RetinopathyDataset(
-                os.path.join(data_dir, "testLabels.csv"), os.path.join(data_dir, "test"), 
-                limit=args.limit, 
-                device=args.device)
-        testloader = DataLoader(testset, batch_size=args.batch)
 
         accuracy = hist_validate(net, testloader, args.stats)
         logger.info("Achieved %3d %% accuracy" % accuracy)

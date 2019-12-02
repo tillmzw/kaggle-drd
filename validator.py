@@ -2,7 +2,11 @@
 
 import os
 import csv
+import logging
 import torch
+
+
+logger = logging.getLogger(__name__)
 
 def hist_validate(net, dataloader, result_file=os.devnull):
     """Count the number of correct and incorrect predictions made by `net` on `dataloader`.
@@ -17,7 +21,7 @@ def hist_validate(net, dataloader, result_file=os.devnull):
         with torch.no_grad():
             for data in dataloader:
                 images, names, labels = data
-                labels = labels.to(self.device)
+                #labels = labels.to(self.device)
                 outputs = net(images)
                 _, predicted = torch.max(outputs.data, 1)
                 total += labels.size(0)

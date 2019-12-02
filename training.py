@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
 import logging
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import cohen_kappa_score
+import validator
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +42,12 @@ class Trainer():
         # TODO use this somewhere
         return torch.tensor(cohen_kappa_score(torch.argmax(y_hat, 1), y, weights='quadratic'))
     
-    # TODO: use tensorboard to record training every and testing loss every N iterations
-    def train(self, model, dataloader, state_file=None, validation_dataloader=None):
+    def train(self, model, dataloader, state_file=None, validation_dataloader=None, validation_rel_step=0.1):
+        """
+        Apply this classes optimizer and loss function to `model` and `dataloader`.
+        The final model can be saved to `state_file`.
+        Validation is performed if `validation_dataloader` is provided at every `validation_rel_step` (in percent of total runs).
+        """
         # we have a very unbalanced data set so we need to add weight to the loss function
         if hasattr(dataloader.dataset, "class_weights"):
             weights = dataloader.dataset.class_weights()
@@ -55,9 +61,11 @@ class Trainer():
         loss_func = self.get_loss_function(weights=weights)
         optimizer = self.get_optimizer(model)
 
+        total_iterations = self._epochs * len(dataloader)
+
+        step = 0
         for epoch in range(self._epochs):  # loop over the dataset multiple times
             logger.info("Training iteration %d/%d" % (epoch + 1, self._epochs))
-            running_loss = 0.0
             for i, data in enumerate(dataloader):
                 # get the inputs; data is a list of [inputs, filenames, labels]
                 inputs, names, labels = data
@@ -72,15 +80,27 @@ class Trainer():
                 loss.backward()
                 optimizer.step()
 
-                # print statistics
-                running_loss += loss.item()
                 if self._writer:
                     # record training loss
-                    self._writer.add_scalar("Train/Loss", loss.item(), i * (epoch + 1))
-                if i % 2000 == 1999:    # print every 2000 mini-batches
-                    logger.debug('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / 2000))
-                    # TODO: test against verification set
-                    running_loss = 0.0
+                    self._writer.add_scalar("Train/Loss", loss.item(), step)
+
+                if int(total_iterations * validation_rel_step) == step and validation_dataloader:
+                    try:
+                        validation_acc = validator.hist_validate(model, validation_dataloader)
+                    except Exception as e:
+                        logger.error("While validating during training, an error occured: %s" % e)
+                    if self._writer:
+                        self._writer.add_scalar("Validation/Loss", validation_acc, step)
+                    logger.info("Validation during training at step %d: %05.2f" % (step, validation_acc))
+                step += 1
+
+            # save an intermediate state of the model in case something goes bad
+            if state_file:
+                fname, fext = os.path.basename(state_file).split(".")
+                intermed_save = os.path.abspath(os.path.join(state_file, "..", "%s_%04d.%s" % (fname, step, fext)))
+                logger.info("Saving intermediate model state file to %s" % intermed_save)
+                torch.save(model.state_dict(), intermed_save)
+
         logger.info('Finished Training')
 
         if state_file:
