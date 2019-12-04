@@ -37,6 +37,7 @@ echo -e "======================================================"
 		--state $WORKDIR/model.pth \
 		--batch 24 \
 		--epochs 50 \
+		--limit 5000 \
 		--train \
 		--validate \
 		--log $WORKDIR/log.txt \
