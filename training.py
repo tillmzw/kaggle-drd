@@ -62,6 +62,8 @@ class Trainer():
         optimizer = self.get_optimizer(model)
 
         total_iterations = self._epochs * len(dataloader)
+        # TODO: this only works for one GPU!
+        model_device = next(model.parameters()).device
 
         step = 0
         for epoch in range(self._epochs):  # loop over the dataset multiple times
@@ -70,6 +72,8 @@ class Trainer():
                 # get the inputs; data is a list of [inputs, filenames, labels]
                 inputs, names, labels = data
 
+                inputs = inputs.to(model_device)
+                labels = labels.to(model_device)
                 # zero the parameter gradients
                 optimizer.zero_grad()
 
