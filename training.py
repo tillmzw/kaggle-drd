@@ -97,7 +97,7 @@ class Trainer():
                     except Exception as e:
                         logger.error("While validating during training, an error occured: %s" % e)
                     if self._writer:
-                        self._writer.add_scalar("Validation/Loss", validation_acc, step)
+                        self._writer.add_scalar("Train/Accuracy", validation_acc, step)
                     logger.info("Validation during training at step %d: %05.2f" % (step, validation_acc))
 
                     if state_file:
@@ -109,7 +109,7 @@ class Trainer():
                 step += 1
 
             if state_file:
-                torch.save(model.state_dict(), intermed_save)
+                torch.save(model.state_dict(), state_file)
 
         logger.info('Finished Training')
 
