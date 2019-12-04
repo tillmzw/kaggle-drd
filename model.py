@@ -15,21 +15,15 @@ logger = logging.getLogger(__name__)
 
 
 class DRDNet(nn.Module):
-    def __init__(self, device="cpu"):
+    def __init__(self):
         super().__init__()
-        # TODO move model to device outside of this context, but before feeding data
-        self.device = torch.device(device)
-        logger.info("Running %s on %s" % (self.__class__.__name__, self.device)) 
-
-        self.to(self.device)
-
         # initialize the pretrained ResNet50
-        self.resnet = models.resnet50(pretrained=True).to(self.device)
+        self.resnet = models.resnet50(pretrained=True)
         for param in self.resnet.parameters():
             # disable gradients for all layers, prevent relearning on those
             param.requires_grad = False
         # 512 * 4 is just the resolved input layer size from the ResNet source class
-        self.resnet.fc = nn.Linear(512 * 4, 5).to(self.device)
+        self.resnet.fc = nn.Linear(512 * 4, 5)
 
     def forward(self, x):
         x = self.resnet(x)

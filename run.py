@@ -64,7 +64,8 @@ if __name__ == "__main__":
     if args.device == "auto":
         args.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    net = Net(device=args.device)
+    net = Net()
+    net.to(torch.device(args.device))
     data_dir = os.path.join(args.dir, "data")
 
     if args.validate:
@@ -89,7 +90,6 @@ if __name__ == "__main__":
         trainer = training.AdamTrainer(epochs=args.epochs, summary={})
         # TODO: is it sensible to use the same data set size as for training for the validation loader?
         trainer.train(net, trainloader, args.state, validation_dataloader=testloader) 
-        #net.train(trainloader, train_iterations=args.epochs, state_file=args.state)
     else:
         if not args.state or not os.path.isfile(args.state):
             raise RuntimeError("State \"%s\" is not a file" % args.state)

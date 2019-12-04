@@ -39,7 +39,7 @@ class Trainer():
         """Converts Cohen's Kappa metric to a tensor, as seen in 
         https://www.kaggle.com/tanlikesmath/diabetic-retinopathy-with-resnet50-oversampling
         """
-        # TODO use this somewhere
+        # TODO use this instead or in addition to the accuracy score
         return torch.tensor(cohen_kappa_score(torch.argmax(y_hat, 1), y, weights='quadratic'))
     
     def train(self, model, dataloader, state_file=None, validation_dataloader=None, validation_rel_step=0.1):
@@ -76,7 +76,7 @@ class Trainer():
                 # forward + backward + optimize
                 outputs = model(inputs)
                 # make sure the labels are on the same device as the data
-                loss = loss_func(outputs, labels.to(model.device))
+                loss = loss_func(outputs, labels)
                 loss.backward()
                 optimizer.step()
 
