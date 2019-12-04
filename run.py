@@ -73,7 +73,7 @@ if __name__ == "__main__":
                 os.path.join(data_dir, "testLabels.csv"), os.path.join(data_dir, "test"), 
                 limit=args.limit, 
                 device=args.device)
-        testloader = DataLoader(testset, batch_size=args.batch)
+        testloader = DataLoader(testset, batch_size=args.batch, num_workers=5)
     else:
         testset, testloader = None, None
 
@@ -85,7 +85,7 @@ if __name__ == "__main__":
                 limit=args.limit, 
                 device=args.device)
         # TODO: multiprocessing: num_works = 5?
-        trainloader = DataLoader(trainset, batch_size=args.batch, shuffle=True)
+        trainloader = DataLoader(trainset, batch_size=args.batch, num_workers=5, shuffle=True)
 
         trainer = training.AdamTrainer(epochs=args.epochs, summary={})
         # TODO: is it sensible to use the same data set size as for training for the validation loader?
