@@ -3,6 +3,7 @@
 import os
 import logging
 import random
+import time
 import torch
 import numpy as np
 import pandas as pd
@@ -52,14 +53,15 @@ class RetinopathyDataset(Dataset):
 
     def load(self, image):
         logger.debug("Loading image %s from path %s" % (os.path.basename(image), os.path.dirname(image)))
+        start = time.time()
         img = Image.open(image)
         timg = self.transform(img)
+        logger.debug("Loading image took %.3f seconds" % (time.time() - start))
         return timg
 
     def transform(self, image):
+        start = time.time()
         # see https://pytorch.org/hub/pytorch_vision_wide_resnet/
-        # TODO: for training use random cropping here
-        # TODO: randomly flip images
         transform = transforms.Compose([
             transforms.Resize(256),
             #transforms.CenterCrop(224),
@@ -70,9 +72,17 @@ class RetinopathyDataset(Dataset):
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
-        return transform(image).to(self._device)
+        image = transform(image)
+        logger.debug("Preprocessing image took %.3f seconds" % (time.time() - start))
+        start = time.time()
+        image = image.to(self._device)
+        logger.debug("Moving image to device %s took %.3f seconds" % (self._device, time.time() - start))
+
+        return image
 
     def classes(self, unique=True):
+        # TODO: this sometimes seems to omit some classes, which causes RuntimeErrors due to missing classes
+        # during training
         labels = np.squeeze(self._labels["level"].to_numpy())
         if unique:
             labels = np.unique(labels)
