@@ -17,15 +17,15 @@ class Trainer():
     def __init__(self, epochs=1, summary=None):
         """Initialize a training class.
         `epochs`: the number of itertations to train for
-        `summary`: a dict used for instantiation of a tensorboard SummaryWriter. 
+        `summary`: a dict used for instantiation of a tensorboard SummaryWriter.
             Can be None, in which case no reports are produced.
         """
         super().__init__()
-        self._epochs = epochs 
+        self._epochs = epochs
         if summary is not None:
             logger.info("Initializing summary writer with arguments: %s" % summary)
             self._writer = SummaryWriter(**summary)
-        else: 
+        else:
             logger.info("No summary writer initialized.")
             self._writer = None
 
@@ -36,12 +36,12 @@ class Trainer():
         return nn.CrossEntropyLoss(weight=weights)
 
     def quadratic_kappa(self, y_hat, y):
-        """Converts Cohen's Kappa metric to a tensor, as seen in 
+        """Converts Cohen's Kappa metric to a tensor, as seen in
         https://www.kaggle.com/tanlikesmath/diabetic-retinopathy-with-resnet50-oversampling
         """
         # TODO use this instead or in addition to the accuracy score
         return torch.tensor(cohen_kappa_score(torch.argmax(y_hat, 1), y, weights='quadratic'))
-    
+
     def train(self, model, dataloader, state_file=None, validation_dataloader=None, validation_rel_step=0.1):
         """
         Apply this classes optimizer and loss function to `model` and `dataloader`.
@@ -96,13 +96,16 @@ class Trainer():
                     if self._writer:
                         self._writer.add_scalar("Validation/Loss", validation_acc, step)
                     logger.info("Validation during training at step %d: %05.2f" % (step, validation_acc))
+
+                    if state_file:
+                        # save intermediate model
+                        fname, fext = os.path.basename(state_file).split(".")
+                        intermed_save = os.path.abspath(os.path.join(state_file, "..", "%s_%04d.%s" % (fname, step, fext)))
+                        logger.info("Saved intermediate model state file to %s" % intermed_save)
+
                 step += 1
 
-            # save an intermediate state of the model in case something goes bad
             if state_file:
-                fname, fext = os.path.basename(state_file).split(".")
-                intermed_save = os.path.abspath(os.path.join(state_file, "..", "%s_%04d.%s" % (fname, step, fext)))
-                logger.info("Saving intermediate model state file to %s" % intermed_save)
                 torch.save(model.state_dict(), intermed_save)
 
         logger.info('Finished Training')
