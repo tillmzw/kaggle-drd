@@ -26,9 +26,7 @@ def git_hash(check_dirty=True, directory=None):
                 "--quiet", 
                 "HEAD", 
                 "--"])
-            is_dirty = retval > 0
-            is_dirty_str = "DIRTY-" if is_dirty else ""
-            return "%s%s" % (is_dirty_str, sha)
+            return "%s%s" % (sha, "DIRTY" if retval > 0 else "")
     except subprocess.CalledProcessError as e:
         logger.warning(e)
         return None
