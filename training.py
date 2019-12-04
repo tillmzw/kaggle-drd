@@ -8,6 +8,7 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import cohen_kappa_score
 import validator
+import utils
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,8 @@ class Trainer():
         super().__init__()
         self._epochs = epochs
         if summary is not None:
+            if "comment" not in summary and utils.git_hash():
+                summary["comment"] = "_" + utils.git_hash()
             logger.info("Initializing summary writer with arguments: %s" % summary)
             self._writer = SummaryWriter(**summary)
         else:
