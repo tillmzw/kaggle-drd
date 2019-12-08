@@ -96,9 +96,10 @@ class Trainer():
                         validation_acc = validator.hist_validate(model, validation_dataloader)
                     except Exception as e:
                         logger.error("While validating during training, an error occured: %s" % e)
-                    if self._writer:
-                        self._writer.add_scalar("Train/Accuracy", validation_acc, step)
-                    logger.info("Validation during training at step %d: %05.2f" % (step, validation_acc))
+                    else:
+                        if self._writer:
+                            self._writer.add_scalar("Train/Accuracy", validation_acc, step)
+                        logger.info("Validation during training at step %d: %05.2f" % (step, validation_acc))
 
                     if state_file:
                         # save intermediate model
