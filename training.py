@@ -45,7 +45,7 @@ class Trainer():
         # TODO use this instead or in addition to the accuracy score
         return torch.tensor(cohen_kappa_score(torch.argmax(y_hat, 1), y, weights='quadratic'))
 
-    def train(self, model, dataloader, state_file=None, validation_dataloader=None, validation_rel_step=0.1):
+    def train(self, model, dataloader, state_file=None, validation_dataloader=None):
         """
         Apply this classes optimizer and loss function to `model` and `dataloader`.
         The final model can be saved to `state_file`.
@@ -87,27 +87,27 @@ class Trainer():
                 loss.backward()
                 optimizer.step()
 
+                step += 1
                 if self._writer:
                     # record training loss
                     self._writer.add_scalar("Train/Loss", loss.item(), step)
 
-                if int(total_iterations * validation_rel_step) == step and validation_dataloader:
-                    try:
-                        validation_acc = validator.hist_validate(model, validation_dataloader)
-                    except Exception as e:
-                        logger.error("While validating during training, an error occured: %s" % e)
-                    else:
-                        if self._writer:
-                            self._writer.add_scalar("Train/Accuracy", validation_acc, step)
-                        logger.info("Validation during training at step %d: %05.2f" % (step, validation_acc))
+            # start validation for the current epoch
+            try:
+                validation_acc = validator.hist_validate(model, validation_dataloader)
+            except Exception as e:
+                logger.error("While validating during training, an error occured: %s" % e)
+            else:
+                if self._writer:
+                    self._writer.add_scalar("Train/Accuracy", validation_acc, step)
+                logger.info("Validation during training at step %d: %05.2f" % (step, validation_acc))
 
-                    if state_file:
-                        # save intermediate model
-                        fname, fext = os.path.basename(state_file).split(".")
-                        intermed_save = os.path.abspath(os.path.join(state_file, "..", "%s_%04d.%s" % (fname, step, fext)))
-                        logger.info("Saved intermediate model state file to %s" % intermed_save)
+            if state_file:
+                # save intermediate model
+                fname, fext = os.path.basename(state_file).split(".")
+                intermed_save = os.path.abspath(os.path.join(state_file, "..", "%s_%04d.%s" % (fname, step, fext)))
+                logger.info("Saved intermediate model state file to %s" % intermed_save)
 
-                step += 1
 
             if state_file:
                 torch.save(model.state_dict(), state_file)
