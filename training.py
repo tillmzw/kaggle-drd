@@ -6,7 +6,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
-from sklearn.metrics import cohen_kappa_score
 import validator
 import utils
 
@@ -36,14 +35,7 @@ class Trainer():
         raise NotImplementedError
 
     def get_loss_function(self, weights=None):
-        return nn.CrossEntropyLoss(weight=weights)
-
-    def quadratic_kappa(self, y_hat, y):
-        """Converts Cohen's Kappa metric to a tensor, as seen in
-        https://www.kaggle.com/tanlikesmath/diabetic-retinopathy-with-resnet50-oversampling
-        """
-        # TODO use this instead or in addition to the accuracy score
-        return torch.tensor(cohen_kappa_score(torch.argmax(y_hat, 1), y, weights='quadratic'))
+        return nn.NLLLoss(weight=weights)
 
     def train(self, model, dataloader, state_file=None, validation_dataloader=None):
         """
@@ -70,6 +62,8 @@ class Trainer():
 
         step = 0
         for epoch in range(self._epochs):  # loop over the dataset multiple times
+            # set the model to training mode
+            model.train()
             logger.info("Training iteration %d/%d" % (epoch + 1, self._epochs))
             for i, data in enumerate(dataloader):
                 # get the inputs; data is a list of [inputs, filenames, labels]
@@ -107,7 +101,6 @@ class Trainer():
                 fname, fext = os.path.basename(state_file).split(".")
                 intermed_save = os.path.abspath(os.path.join(state_file, "..", "%s_%04d.%s" % (fname, step, fext)))
                 logger.info("Saved intermediate model state file to %s" % intermed_save)
-
 
             if state_file:
                 torch.save(model.state_dict(), state_file)

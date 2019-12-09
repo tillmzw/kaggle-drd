@@ -6,6 +6,7 @@ import logging
 import torch
 import torch.cuda
 import torch.nn as nn
+from torch.functional import F
 import torch.optim as optim
 import torchvision.models as models
 from sklearn.utils import class_weight
@@ -19,14 +20,11 @@ class DRDNet(nn.Module):
         super().__init__()
         # initialize the pretrained ResNet50
         self.resnet = models.resnet50(pretrained=True)
-        for param in self.resnet.parameters():
-            # disable gradients for all layers, prevent relearning on those
-            param.requires_grad = False
         # 512 * 4 is just the resolved input layer size from the ResNet source class
         self.resnet.fc = nn.Linear(512 * 4, 5)
 
     def forward(self, x):
         x = self.resnet(x)
-        # scale to 1?
-        # x = F.softmax(x, dim=0)
+        # scale to 1
+        x = F.log_softmax(x, dim=1)
         return x
