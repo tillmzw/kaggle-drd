@@ -107,10 +107,7 @@ class Trainer():
                 fname, fext = os.path.basename(state_file).split(".")
                 intermed_save = os.path.abspath(os.path.join(state_file, "..", "%s_%04d.%s" % (fname, step, fext)))
                 logger.info("Saved intermediate model state file to %s" % intermed_save)
-
-
-            if state_file:
-                torch.save(model.state_dict(), state_file)
+                torch.save(model.state_dict(), intermed_save)
 
         logger.info('Finished Training')
 
