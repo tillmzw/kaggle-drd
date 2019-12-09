@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from model import DRDNet as Net
 from dataset import RetinopathyDataset
 import training
-from validator import hist_validate
+from validator import validate
 
 
 logger = logging.getLogger(__name__)
@@ -98,8 +98,8 @@ if __name__ == "__main__":
 
     if args.validate:
 
-        accuracy = hist_validate(net, testloader, args.stats)
-        logger.info("Achieved %3d %% accuracy" % accuracy)
+        accuracy, kappa = validate(net, testloader, args.stats)
+        logger.info("Achieved %3d %% accuracy, kappa = % 04.2f" % (accuracy, kappa))
 
         if args.show:
             import matplotlib.pyplot as plt

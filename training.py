@@ -88,13 +88,15 @@ class Trainer():
 
             # start validation for the current epoch
             try:
-                validation_acc = validator.hist_validate(model, validation_dataloader)
+                validation_acc, validation_kappa = validator.validate(model, validation_dataloader)
             except Exception as e:
-                logger.error("While validating during training, an error occured: %s" % e)
+                logger.error("While validating during training, an error occured:")
+                logger.exception(e)
             else:
                 if self._writer:
                     self._writer.add_scalar("Train/Accuracy", validation_acc, step)
-                logger.info("Validation during training at step %d: %05.2f" % (step, validation_acc))
+                    self._writer.add_scalar("Train/Kappa", validation_kappa, step)
+                logger.info("Validation during training at step %d: %05.2f, kappa = % 04.2f" % (step, validation_acc, validation_kappa))
 
             if state_file:
                 # save intermediate model
