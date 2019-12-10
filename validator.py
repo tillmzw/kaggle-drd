@@ -23,6 +23,9 @@ def quadratic_kappa(y_hat, y, classes=5):
         y_hat_max = torch.argmax(y_hat, 1)
     else:
         raise RuntimeError("Invalid dimension for kappa calculations: %d" % y_hat.dims())
+    #  can't convert CUDA tensor to numpy. Use Tensor.cpu() to copy the tensor to host memory first.
+    y_hat_max = y_hat_max.cpu()
+    y = y.cpu()
     return torch.tensor(cohen_kappa_score(y_hat_max, y, weights='quadratic', labels=np.array(range(classes))))
 
 
