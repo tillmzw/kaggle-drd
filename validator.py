@@ -43,10 +43,8 @@ def validate(net, dataloader, result_file=os.devnull):
     # TODO: use sklearn.metrics.accuracy_score?
 
     # TODO: is there a better way to do this? 
-    predictions = torch.tensor(data=(), dtype=torch.int64)
-    truth = torch.tensor(data=(), dtype=torch.int64)
-    predictions.to(model_device)
-    truth.to(model_device)
+    predictions = torch.tensor(data=(), dtype=torch.int64).to(model_device)
+    truth = torch.tensor(data=(), dtype=torch.int64).to(model_device)
 
     # TODO: no one needs this CSV?
     with open(result_file, "w", encoding="utf_8") as csvfile:
