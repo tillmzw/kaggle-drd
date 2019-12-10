@@ -26,6 +26,7 @@ class RetinopathyDataset(Dataset):
 
         self._device = torch.device(device)
 
+        logger.info("Loading dataset")
         self._labels = pd.read_csv(labels_file, index_col=0)
         self._labels["patient"] = self._labels.index.map(lambda x: x.split('_')[0])
         self._labels["eye"] = self._labels.index.map(lambda x: 1 if x.split('_')[-1] == 'left' else 0)
