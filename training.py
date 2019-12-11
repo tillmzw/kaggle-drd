@@ -92,7 +92,7 @@ class Trainer():
                     logger.exception(e)
                 else:
                     wandb.log({"validation_accuracy": validation_acc, "validation_kappa": validation_kappa}, step=step)
-                    logger.info("Validation during training at step %d: %05.2f, kappa = % 04.2f" % (step, validation_acc, validation_kappa))
+                    logger.info("Validation during training at step %d: %05.2f%%, kappa = % 04.2f" % (step, validation_acc, validation_kappa))
 
             if state_file:
                 # save intermediate model

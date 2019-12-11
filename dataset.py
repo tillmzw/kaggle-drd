@@ -2,7 +2,7 @@
 
 import os
 import logging
-import random
+import math
 import time
 import torch
 import numpy as np
@@ -26,7 +26,7 @@ class RetinopathyDataset(Dataset):
 
         self._device = torch.device(device)
 
-        logger.info("Loading dataset")
+        start = time.time()
         self._labels = pd.read_csv(labels_file, index_col=0)
         self._labels["patient"] = self._labels.index.map(lambda x: x.split('_')[0])
         self._labels["eye"] = self._labels.index.map(lambda x: 1 if x.split('_')[-1] == 'left' else 0)
@@ -36,10 +36,14 @@ class RetinopathyDataset(Dataset):
         self._labels = self._labels[self._labels['file_exists']]
 
         if limit:
-            logger.warning("Limiting dataset to %d images" % limit)
-            self._labels = self._labels.sample(limit)
+            if limit < 1:
+                limit_n = math.floor(len(self._labels.index) * limit)
+            else:
+                limit_n = math.floor(limit)
+            logger.warning("Limiting dataset to %d images (of %d)" % (limit_n, len(self._labels.index)))
+            self._labels = self._labels.sample(limit_n)
 
-        logger.info("Loaded %d images from %s" % (len(self), path))
+        logger.info("Loading %d images from %s took %.2f s" % (len(self), path, (time.time() - start)))
 
     def __len__(self):
         return len(self._labels)
@@ -101,4 +105,6 @@ class RetinopathyDataset(Dataset):
         if np.squeeze(weights.shape) == 1:
             logger.warning("Skipping weights, only detected a single class in the data!")
             return None
+        if np.squeeze(weights.shape) != 5:
+            raise RuntimeError("Need exactly 5 classes in the sample, found %d" % np.squeeze(weights.shape))
         return torch.from_numpy(weights).float().to(self._device)

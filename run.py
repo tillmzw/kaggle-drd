@@ -25,17 +25,17 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--state", type=str, default=None)
-    parser.add_argument("-b", "--batch", type=int, default=8)
+    parser.add_argument("-b", "--batch", type=int, default=24)
     parser.add_argument("-e", "--epochs", type=int, default=2)
     parser.add_argument("-d", "--dir", type=str, default=os.path.abspath("."), help="base dir")
-    parser.add_argument("-l", "--limit", type=int, default=None, help="Limit datasets to N entries")
+    parser.add_argument("-l", "--limit", type=float, default=None, help="Limit training dataset to this many entries; can be an integer (number of samples) or a float (fraction of samples). Requires --train")
     parser.add_argument("-v", "--verbose", action="store_true", default=False)
-    parser.add_argument("--device", choices=("cpu", "cuda", "auto"), default="auto", help="Run on this device")
-    parser.add_argument("--validate", action="store_true", default=False, help="Run validation tests")
-    parser.add_argument("-x", "--stats", type=str, default="/dev/null", help="Write a validation report to this file. Requires --validation")
-    parser.add_argument("--train", action="store_true", default=False, help="Run training phase")
-    parser.add_argument("--show", action="store_true", default=False, help="Show the first batch of validation images")
-    parser.add_argument("--log", default=None, help="Log file")
+    parser.add_argument("-t", "--train", action="store_true", default=False, help="Run training phase")
+    parser.add_argument("-D", "--device", choices=("cpu", "cuda", "auto"), default="auto", help="Run on this device")
+    parser.add_argument("-V", "--validate", action="store_true", default=False, help="Run validation tests")
+    parser.add_argument("-L", "--validation-limit", type=float, default=None, help="During validation, limit validation set to this number of samples; can be an integer (number of samples) or a float (fraction of samples). Requires --validation")
+    parser.add_argument("--log", default=None, help="Write all log file to this file")
+    parser.add_argument("-N", "--no-wandb", action="store_true", default=False, help="Dont send results to wandb")
     # TODO: support >1 GPU
 
     args = parser.parse_args()
@@ -59,11 +59,14 @@ if __name__ == "__main__":
                         handlers=handlers)
 
     # initialize early so that the wandb logging handlers are attached
-    wandb.init(project="diabetic_retinopathy_detection")
+    wandb_cfg = {"project": "diabetic_retinopathy_detection"}
+    if args.no_wandb:
+        os.environ["WANDB_MODE"] = "dryrun"
+    wandb.init(**wandb_cfg)
 
     logger.info("Command line arguments:")
     for arg in vars(args):
-        logger.info("%10s: %s" % (arg, getattr(args, arg)))
+        logger.info("%18s: %s" % (arg, getattr(args, arg)))
 
     if args.device == "auto":
         args.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -75,11 +78,9 @@ if __name__ == "__main__":
     if args.validate:
         testset = RetinopathyDataset(
                 os.path.join(data_dir, "testLabels.csv"), os.path.join(data_dir, "test"), 
-                limit=args.limit, 
+                limit=args.validation_limit, 
                 device=args.device)
-        testloader = DataLoader(testset, batch_size=args.batch, num_workers=0)
-    else:
-        testset, testloader = None, None
+        testloader = DataLoader(testset, batch_size=args.batch, num_workers=0, shuffle=True)
 
     if args.train:
         logger.info("Starting training")
@@ -92,32 +93,15 @@ if __name__ == "__main__":
         trainloader = DataLoader(trainset, batch_size=args.batch, num_workers=0, shuffle=True)
 
         trainer = training.AdamTrainer(epochs=args.epochs)
-        # TODO: is it sensible to use the same data set size as for training for the validation loader?
         trainer.train(net, trainloader, args.state, validation_dataloader=testloader) 
     else:
-        if not args.state or not os.path.isfile(args.state):
+        if not args.state:
+            raise RuntimeError("Need a state if not training")
+        if not os.path.isfile(args.state):
             raise RuntimeError("State \"%s\" is not a file" % args.state)
         logger.info("Loading model state from %s" % args.state)
         net.load_state_dict(torch.load(args.state))
 
     if args.validate:
-
-        accuracy, kappa = validate(net, testloader, args.stats)
-        logger.info("Achieved %3d %% accuracy, kappa = % 04.2f" % (accuracy, kappa))
-
-        if args.show:
-            import matplotlib.pyplot as plt
-            import numpy as np
-
-            test_images, test_names, test_labels = iter(testloader).next()
-            results = net(test_images)
-            # results contain a confidence score for every class - we just care about the highest
-            _, predicted = torch.max(results, 1)
-            logger.info("Real data:   %s" % ("\t".join("%6s" % test_labels[i] for i in range(args.batch))))
-            logger.info("NN detected: %s" % ("\t".join("%6s" % predicted[i] for i in range(args.batch))))
-
-            img = torchvision.utils.make_grid(test_images)
-            img = img / 2 + 0.5  # unnormalize
-            npimg = img.numpy()
-            plt.imshow(np.transpose(npimg, (1, 2, 0)))
-            plt.show()
+        acc, kappa = validate(net, testloader)
+        logger.info("Final validation run: %05.2f%% accuracy, kappa = % 04.2f" % (acc, kappa))
