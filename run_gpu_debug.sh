@@ -36,10 +36,10 @@ echo -e "======================================================"
 		--dir $BASEDIR \
 		--state $WORKDIR/model.pth \
 		--limit 128 \
+		--validation-limit 128 \
 		--batch 24 \
 		--epochs 5 \
 		--train \
 		--validate \
 		--log $WORKDIR/log.txt \
-		--stats $WORKDIR/validate.csv
 )

@@ -38,7 +38,7 @@ echo -e "======================================================"
 		--batch 24 \
 		--epochs 8 \
 		--limit 2000 \
+		--validation-limit 2000 \
 		--train \
 		--validate \
-		--stats $WORKDIR/validate.csv
 )
