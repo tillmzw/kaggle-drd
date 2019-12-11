@@ -52,8 +52,8 @@ class Trainer():
             "git": utils.git_hash(),
             "epochs": self._epochs,
             "batch_size": dataloader.batch_size,
-            "n_training_samples": len(dataloader),
-            "n_validation_samples": len(validation_dataloader) if validation_dataloader else -1,
+            "n_training_batches": len(dataloader),
+            "n_validation_batches": len(validation_dataloader) if validation_dataloader else -1,
         })
 
         # TODO: this only works for one GPU!
