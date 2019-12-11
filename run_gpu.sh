@@ -5,7 +5,7 @@
 #SBATCH --mail-user="till.meyerzuwestram@artorg.unibe.ch"
 #SBATCH --cpus-per-task=3
 #SBATCH --mem=30G
-#SBATCH --time=2-00:00:0
+#SBATCH --time=24:00:0
 #SBATCH --gres=gpu:gtx1080ti:1
 #SBATCH --partition=gpu
 
