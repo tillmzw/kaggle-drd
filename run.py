@@ -7,6 +7,7 @@ import argparse
 import datetime
 import torch
 import torchvision
+import wandb
 from torch.utils.data import DataLoader
 
 from model import DRDNet as Net
@@ -57,6 +58,9 @@ if __name__ == "__main__":
                         datefmt="%H:%M:%S",
                         handlers=handlers)
 
+    # initialize early so that the wandb logging handlers are attached
+    wandb.init(project="diabetic_retinopathy_detection")
+
     logger.info("Command line arguments:")
     for arg in vars(args):
         logger.info("%10s: %s" % (arg, getattr(args, arg)))
@@ -87,7 +91,7 @@ if __name__ == "__main__":
         # TODO: multiprocessing: num_works = 5?
         trainloader = DataLoader(trainset, batch_size=args.batch, num_workers=0, shuffle=True)
 
-        trainer = training.AdamTrainer(epochs=args.epochs, summary={})
+        trainer = training.AdamTrainer(epochs=args.epochs)
         # TODO: is it sensible to use the same data set size as for training for the validation loader?
         trainer.train(net, trainloader, args.state, validation_dataloader=testloader) 
     else:

@@ -30,3 +30,13 @@ def git_hash(check_dirty=True, directory=None):
     except subprocess.CalledProcessError as e:
         logger.warning(e)
         return None
+
+
+def hostname():
+    try:
+        host = subprocess.check_output(["hostname", "--fqdn"]).strip().decode("utf8")
+    except subprocess.CalledProcessError as e:
+        logger.warning(e)
+        return None
+    else:
+        return host

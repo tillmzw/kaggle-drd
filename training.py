@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 import logging
+import datetime
 import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.tensorboard import SummaryWriter
+import wandb
 import validator
 import utils
 
@@ -14,22 +15,12 @@ logger = logging.getLogger(__name__)
 
 class Trainer():
 
-    def __init__(self, epochs=1, summary=None):
+    def __init__(self, epochs=1):
         """Initialize a training class.
         `epochs`: the number of itertations to train for
-        `summary`: a dict used for instantiation of a tensorboard SummaryWriter.
-            Can be None, in which case no reports are produced.
         """
         super().__init__()
         self._epochs = epochs
-        if summary is not None:
-            if "comment" not in summary and utils.git_hash():
-                summary["comment"] = "_" + utils.git_hash()
-            logger.info("Initializing summary writer with arguments: %s" % summary)
-            self._writer = SummaryWriter(**summary)
-        else:
-            logger.info("No summary writer initialized.")
-            self._writer = None
 
     def get_optimizer(self):
         raise NotImplementedError
@@ -56,7 +47,15 @@ class Trainer():
         loss_func = self.get_loss_function(weights=weights)
         optimizer = self.get_optimizer(model)
 
-        total_iterations = self._epochs * len(dataloader)
+        wandb.config.update({
+            "host": utils.hostname(),
+            "git": utils.git_hash(),
+            "epochs": self._epochs,
+            "batch_size": dataloader.batch_size,
+            "n_training_samples": len(dataloader),
+            "n_validation_samples": len(validation_dataloader) if validation_dataloader else -1,
+        })
+
         # TODO: this only works for one GPU!
         model_device = next(model.parameters()).device
 
@@ -82,21 +81,18 @@ class Trainer():
                 optimizer.step()
 
                 step += 1
-                if self._writer:
-                    # record training loss
-                    self._writer.add_scalar("Train/Loss", loss.item(), step)
+                wandb.log({"training_loss": loss.item()}, step=step)
 
             # start validation for the current epoch
-            try:
-                validation_acc, validation_kappa = validator.validate(model, validation_dataloader)
-            except Exception as e:
-                logger.error("While validating during training, an error occured:")
-                logger.exception(e)
-            else:
-                if self._writer:
-                    self._writer.add_scalar("Train/Accuracy", validation_acc, step)
-                    self._writer.add_scalar("Train/Kappa", validation_kappa, step)
-                logger.info("Validation during training at step %d: %05.2f, kappa = % 04.2f" % (step, validation_acc, validation_kappa))
+            if validation_dataloader:
+                try:
+                    validation_acc, validation_kappa = validator.validate(model, validation_dataloader)
+                except Exception as e:
+                    logger.error("While validating during training, an error occured:")
+                    logger.exception(e)
+                else:
+                    wandb.log({"validation_accuracy": validation_acc, "validation_kappa": validation_kappa}, step=step)
+                    logger.info("Validation during training at step %d: %05.2f, kappa = % 04.2f" % (step, validation_acc, validation_kappa))
 
             if state_file:
                 # save intermediate model
