@@ -34,6 +34,9 @@ class Trainer():
         The final model can be saved to `state_file`.
         Validation is performed if `validation_dataloader` is provided at every `validation_rel_step` (in percent of total runs).
         """
+        # TODO: this only works for one GPU!
+        model_device = next(model.parameters()).device
+
         # we have a very unbalanced data set so we need to add weight to the loss function
         if hasattr(dataloader.dataset, "class_weights"):
             weights = dataloader.dataset.class_weights()
@@ -44,6 +47,7 @@ class Trainer():
         else:
             logger.warning("No class weight calculation supported by data loader %s" % dataloader.__class__)
             weights = None
+        weights = weights.to(model_device)
         loss_func = self.get_loss_function(weights=weights)
         optimizer = self.get_optimizer(model)
 
@@ -55,9 +59,6 @@ class Trainer():
             "n_training_batches": len(dataloader),
             "n_validation_batches": len(validation_dataloader) if validation_dataloader else -1,
         })
-
-        # TODO: this only works for one GPU!
-        model_device = next(model.parameters()).device
 
         step = 0
         for epoch in range(self._epochs):  # loop over the dataset multiple times
