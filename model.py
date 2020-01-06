@@ -1,15 +1,9 @@
 #!/usr/bin/env python3
 
-import os
-import csv
 import logging
-import torch
-import torch.cuda
 import torch.nn as nn
 from torch.functional import F
-import torch.optim as optim
 import torchvision.models as models
-from sklearn.utils import class_weight
 
 
 logger = logging.getLogger(__name__)
