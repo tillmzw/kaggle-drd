@@ -8,3 +8,4 @@ wandb
 *.swp
 *.pth
 *.sync-conflict*
+slurm-*.out
