@@ -9,6 +9,7 @@ import torch
 import torchvision
 import wandb
 from torch.utils.data import DataLoader
+import multiprocessing
 
 from model import DRDNet as Net
 from dataset import RetinopathyDataset
@@ -17,6 +18,7 @@ from validator import validate
 
 
 logger = logging.getLogger(__name__)
+CPU_COUNT = min(4, multiprocessing.cpu_count())
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
@@ -78,25 +80,23 @@ if __name__ == "__main__":
     if args.validate:
         testset = RetinopathyDataset(
                 os.path.join(data_dir, "testLabels.csv"), os.path.join(data_dir, "test"), 
-                limit=args.validation_limit, 
-                device=args.device)
-        testloader = DataLoader(testset, batch_size=args.batch, num_workers=0, shuffle=True)
+                limit=args.validation_limit)
+        testloader = DataLoader(testset, batch_size=args.batch, num_workers=CPU_COUNT, shuffle=True)
 
     if args.train:
         logger.info("Starting training")
 
         trainset = RetinopathyDataset(
                 os.path.join(data_dir, "trainLabels.csv"), os.path.join(data_dir, "train"), 
-                limit=args.limit, 
-                device=args.device)
-        # TODO: multiprocessing: num_works = 5?
-        trainloader = DataLoader(trainset, batch_size=args.batch, num_workers=0, shuffle=True)
+                limit=args.limit)
+
+        trainloader = DataLoader(trainset, batch_size=args.batch, num_workers=CPU_COUNT, shuffle=True)
 
         trainer = training.AdamTrainer(epochs=args.epochs)
         trainer.train(net, trainloader, args.state, validation_dataloader=testloader) 
     else:
         if not args.state:
-            raise RuntimeError("Need a state if not training")
+            raise RuntimeError("Need a state file if training is skipped")
         if not os.path.isfile(args.state):
             raise RuntimeError("State \"%s\" is not a file" % args.state)
         logger.info("Loading model state from %s" % args.state)
