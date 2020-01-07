@@ -2,6 +2,7 @@
 
 import logging
 import datetime
+import time
 import os
 import torch
 import torch.nn as nn
@@ -41,8 +42,8 @@ class Trainer():
         if hasattr(dataloader.dataset, "class_weights"):
             weights = dataloader.dataset.class_weights()
             if weights is not None:
-                logger.info("Applying weights:\n\t%s" % "\n\t".join(
-                    ("class %d: %.2f" % (i, w) for i, w in enumerate(weights))
+                logger.info("Applying weights: %s" % ", ".join(
+                    ("%d: %.2f" % (i, w) for i, w in enumerate(weights))
                 ))
         else:
             logger.warning("No class weight calculation supported by data loader %s" % dataloader.__class__)
@@ -65,6 +66,7 @@ class Trainer():
             # set the model to training mode
             model.train()
             logger.info("Training iteration %d/%d" % (epoch + 1, self._epochs))
+            start = time.time()
             for i, data in enumerate(dataloader):
                 # get the inputs; data is a list of [inputs, filenames, labels]
                 inputs, names, labels = data
@@ -102,7 +104,8 @@ class Trainer():
                 logger.info("Saved intermediate model state file to %s" % intermed_save)
                 torch.save(model.state_dict(), intermed_save)
 
-        logger.info('Finished Training')
+            logger.info("Training iteration took %s" % time.strftime("%M:%S", time.gmtime(time.time() - start)))
+        logger.debug('Finished Training')
 
         if state_file:
             logger.info('Saving model parameters to %s' % state_file)
