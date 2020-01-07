@@ -35,8 +35,8 @@ echo -e "======================================================"
 		--device cuda \
 		--dir $BASEDIR \
 		--state $WORKDIR/model.pth \
-		--batch 24 \
-		--epochs 50 \
+		--batch 64 \
+		--epochs 100 \
 		--validation-limit 0.25 \
 		--train \
 		--validate \
