@@ -100,7 +100,7 @@ class Trainer():
             if validation_dataloader:
                 validation_start = time.time()
                 try:
-                    validation_acc, validation_kappa = validator.validate(model, validation_dataloader)
+                    validation_acc, validation_kappa, _ = validator.validate(model, validation_dataloader)
                 except Exception as e:
                     logger.error("While validating during training, an error occured:")
                     logger.exception(e)

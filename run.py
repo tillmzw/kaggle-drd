@@ -105,5 +105,10 @@ if __name__ == "__main__":
         net.load_state_dict(torch.load(args.state))
 
     if args.validate:
-        acc, kappa = validate(net, testloader)
+        acc, kappa, confusion = validate(net, testloader)
         logger.info("Final validation run: %05.2f%% accuracy, kappa = % 04.2f" % (acc, kappa))
+        logger.info("Confusion matrix:")
+        logger.info("|| {:^5d} | {:^5d} | {:^5d} | {:^5d} | {:^5d} ||".format(*list(range(5))))
+        logger.info("||---------------------------------------||")
+        for trues in confusion:
+            logger.info("|| {:^5d} | {:^5d} | {:^5d} | {:^5d} | {:^5d} ||".format(*trues))
