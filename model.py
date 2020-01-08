@@ -12,13 +12,27 @@ logger = logging.getLogger(__name__)
 class DRDNet(nn.Module):
     def __init__(self):
         super().__init__()
-        # initialize the pretrained ResNet50
-        self.resnet = models.resnet50(pretrained=True)
-        # 512 * 4 is just the resolved input layer size from the ResNet source class
-        self.resnet.fc = nn.Linear(512 * 4, 5)
+        resnet = models.resnet50(pretrained=True)
+        resnet.fc = Identity()
+        self.features = resnet
+        self.classifier = nn.Linear(512 * 4, 5)
 
     def forward(self, x):
-        x = self.resnet(x)
-        # scale to 1
+        x = self.features(x)
+        x = self.classifier(x)
         x = F.log_softmax(x, dim=1)
+        return x
+
+
+class Identity(nn.Module):
+    """
+    A module that returns its input as output.
+    Useful to functionally remove other modules.
+
+    https://discuss.pytorch.org/t/how-to-delete-layer-in-pretrained-model/17648/2
+    """
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
         return x
