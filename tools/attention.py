@@ -1,36 +1,21 @@
 #!/usr/bin/env python3
 
-import sys
 import os
 import argparse
 import logging
 
 from PIL import Image
 import torch
-import numpy
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from model import DRDNet
+from ..model import DRDNet
+from cnn_visualize.misc_functions import (preprocess_image,
+                                          convert_to_grayscale,
+                                          format_np_output)
+from cnn_visualize.gradcam import GradCam
+from cnn_visualize.guided_backprop import GuidedBackprop
+from cnn_visualize.guided_gradcam import guided_grad_cam
 
-""" LOAD CNN VISUALIZATIONS LIB FROM DIR """
-VIS_DIR = '%s/pytorch-cnn-visualizations/src' % os.path.dirname(os.path.abspath(__file__))
-if not os.path.isdir(VIS_DIR):
-    raise RuntimeError("Visualization project not found: %s" % VIS_DIR)
-else:
-    print(VIS_DIR)
-    sys.path.insert(0, VIS_DIR)
-
-from misc_functions import (get_example_params,
-                            preprocess_image,
-                            convert_to_grayscale,
-                            save_gradient_images, 
-                            format_np_output)
-from gradcam import GradCam
-from guided_backprop import GuidedBackprop
-from guided_gradcam import guided_grad_cam
-
-
-""" END IMPORTS """
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +28,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-o', '--output', help="Output image name", default=None)
     parser.add_argument('-s', '--state', help="Model state file to load")
-    parser.add_argument('-l', '--layer', type=int, default=-1)
+    parser.add_argument('-l', '--layer', type=int, default=-1, help="For which layer to generate a gradcam. Defaults to all.")
     # `class` is a reserved keyword
     parser.add_argument('-c', '--class', type=int, default=None, help="Class of input image", dest="target_class")
     parser.add_argument('input', help="Input image")
@@ -52,9 +37,10 @@ if __name__ == '__main__':
 
     if not args.output:
         args.output = "%s/%s_gradcam.%s" % (
-                os.path.dirname(args.input),
-                os.path.basename(args.input),
-                args.input.split(".")[-1])
+            os.path.dirname(args.input),
+            os.path.basename(args.input),
+            args.input.split(".")[-1]
+        )
 
     if not os.path.isfile(args.state):
         raise RuntimeError("Model state file does not exist: %s" % args.state)
@@ -65,6 +51,7 @@ if __name__ == '__main__':
     logger.info("Generating activation map of %s: %s" % (args.input, args.output))
 
     model = DRDNet()
+    # always keep this in CPU, because for single image this is fast enough
     model.load_state_dict(torch.load(args.state, map_location=torch.device('cpu')))
 
     orig_image = Image.open(args.input).convert("RGB")
@@ -86,8 +73,8 @@ if __name__ == '__main__':
             guided_grads = GBP.generate_gradients(prep_img, args.target_class)
 
             # Guided Grad cam
+            # TODO: do we really need to .T here?
             cam_gb = guided_grad_cam(cam.T, guided_grads)
-            #save_gradient_images(cam_gb, file_name_to_export + '_GGrad_Cam')
             gradient = convert_to_grayscale(cam_gb)
 
             gradient = gradient - gradient.min()
