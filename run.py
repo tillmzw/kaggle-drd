@@ -82,6 +82,8 @@ if __name__ == "__main__":
                 os.path.join(data_dir, "testLabels.csv"), os.path.join(data_dir, "test"), 
                 limit=args.validation_limit)
         testloader = DataLoader(testset, batch_size=args.batch, num_workers=CPU_COUNT, shuffle=True)
+    else:
+        testloader = None
 
     if args.train:
         logger.info("Starting training")
