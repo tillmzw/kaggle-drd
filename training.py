@@ -66,7 +66,7 @@ class Trainer():
             # set the model to training mode
             model.train()
             logger.info("Training iteration %d/%d" % (epoch + 1, self._epochs))
-            start = time.time()
+            training_start = time.time()
             for i, data in enumerate(dataloader):
                 # get the inputs; data is a list of [inputs, filenames, labels]
                 inputs, names, labels = data
@@ -86,8 +86,19 @@ class Trainer():
                 step += 1
                 wandb.log({"training_loss": loss.item()}, step=step)
 
+            # seconds -> float
+            tt = time.time() - training_start
+            # minutes with seconds as decimal
+            ett = tt // 60 + ((tt % 60) / 60)
+            # normalize by number of samples, i.e. normalize to seconds per image
+            ett_image = ett * 60 / (dataloader.batch_size * len(dataloader))
+            logger.info("Training iteration took %.2f minutes (~ %.0f seconds), or %.4f seconds per image" % (ett, ett * 60, ett_image))
+            wandb.log({"epoch_training_time_abs": ett}, step=step)
+            wandb.log({"epoch_training_time_image": ett_image}, step=step)
+
             # start validation for the current epoch
             if validation_dataloader:
+                validation_start = time.time()
                 try:
                     validation_acc, validation_kappa = validator.validate(model, validation_dataloader)
                 except Exception as e:
@@ -96,6 +107,13 @@ class Trainer():
                 else:
                     wandb.log({"validation_accuracy": validation_acc, "validation_kappa": validation_kappa}, step=step)
                     logger.info("Validation during training at step %d: %05.2f%%, kappa = % 04.2f" % (step, validation_acc, validation_kappa))
+                    vt = time.time() - validation_start
+                    vtt = vt // 60 + ((vt % 60) / 60)
+                    # normalize by number of samples, i.e. normalize to seconds per image
+                    vtt_image = vtt * 60 / (dataloader.batch_size * len(dataloader))
+                    logger.info("Validation took %.2f minutes (~ %.0f seconds), or %.4f seconds per image" % (vtt, vtt * 60, vtt_image))
+                    wandb.log({"epoch_training_validation_time_abs": vtt}, step=step)
+                    wandb.log({"epoch_training_validation_time_image": vtt_image}, step=step)
 
             if state_file:
                 # save intermediate model
@@ -104,12 +122,6 @@ class Trainer():
                 logger.info("Saved intermediate model state file to %s" % intermed_save)
                 torch.save(model.state_dict(), intermed_save)
 
-            # seconds -> float
-            tt = time.time() - start
-            # minutes with seconds as decimal
-            ett = tt // 60 + ((tt % 60) / 60)
-            logger.info("Training iteration took %.2f minutes" % ett)
-            wandb.log({"epoch_training_time": ett})
         logger.debug('Finished Training')
 
         if state_file:
