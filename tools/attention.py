@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from model import DRDNet
 from cnn_visualize.misc_functions import (preprocess_image,
                                           convert_to_grayscale,
+                                          apply_colormap_on_image,
                                           format_np_output)
 from cnn_visualize.gradcam import GradCam
 from cnn_visualize.guided_backprop import GuidedBackprop
@@ -27,21 +28,18 @@ if __name__ == '__main__':
                         datefmt="%H:%M:%S")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-o', '--output', help="Output image name", default=None)
+    parser.add_argument('-p', '--path', help="Path for output images", default=".")
     parser.add_argument('-s', '--state', help="Model state file to load")
     parser.add_argument('-l', '--layer', type=int, default=-1, help="For which layer to generate a gradcam. Defaults to all.")
     # `class` is a reserved keyword
-    parser.add_argument('-c', '--class', type=int, default=None, help="Class of input image", dest="target_class")
+    parser.add_argument('-c', '--class', type=int, default=None, help="Class of input image. If left blank, the most probable class from the predictions will be used.", dest="target_class")
+    parser.add_argument('-g', '--gif', action="store_true", default=False, help="Generate a GIF from all images instead of single images.")
     parser.add_argument('input', help="Input image")
 
     args = parser.parse_args()
 
-    if not args.output:
-        args.output = "%s/%s_gradcam.%s" % (
-            os.path.dirname(args.input),
-            os.path.basename(args.input),
-            args.input.split(".")[-1]
-        )
+    if not os.path.isdir(args.path):
+        raise RuntimeError("Output is not a directory: %s" % args.path)
 
     if not os.path.isfile(args.state):
         raise RuntimeError("Model state file does not exist: %s" % args.state)
@@ -49,48 +47,54 @@ if __name__ == '__main__':
     if not os.path.isfile(args.input):
         raise RuntimeError("Input file doesn't exist: %s" % args.input)
 
-    logger.info("Generating activation map of %s: %s" % (args.input, args.output))
+    input_name = ".".join(os.path.basename(args.input).split(".")[:-1])
+
+    logger.info("Generating activation map of %s in %s" % (args.input, args.path))
 
     model = DRDNet()
-    # always keep this in CPU, because for single image this is fast enough
+    # always keep this in CPU, because for single images this is fast enough
     model.load_state_dict(torch.load(args.state, map_location=torch.device('cpu')))
 
     orig_image = Image.open(args.input).convert("RGB")
     prep_img = preprocess_image(orig_image)
 
-    if args.layer == -1:
-        cams = (GradCam(model, target_layer=i) for i in range(len(model.features._modules)))
-    else:
-        cams = (GradCam(model, target_layer=args.layer), )
+    mods = model.features._modules
 
-    for i, gcv2 in enumerate(cams):
+    # take all layers
+    layer_cams = (
+        (idx, mod, GradCam(model, target_layer=idx)) for idx, mod in enumerate(mods)
+    )
+
+    if 0 <= args.layer <= len(mods):
+        # remove all layers not requested. slow, but ¯\_(ツ)_/¯
+        layer_cams = filter(lambda el: args.layer == el[0], layer_cams)
+
+    outputs = []
+    for i, name, gcv2 in layer_cams:
         try:
             # Generate cam mask
-            cam = gcv2.generate_cam(prep_img, args.target_class)
+            activation_map = gcv2.generate_cam(prep_img, args.target_class)
 
-            # Guided backprop
-            GBP = GuidedBackprop(model)
-            # Get gradients
-            guided_grads = GBP.generate_gradients(prep_img, args.target_class)
+            # TODO: P: am i discarding negative values?
+            heatmap, heatmap_img = apply_colormap_on_image(orig_image, activation_map, 'hsv')
 
-            # Guided Grad cam
-            # TODO: do we really need to .T here?
-            cam_gb = guided_grad_cam(cam.T, guided_grads)
-            gradient = convert_to_grayscale(cam_gb)
-
-            # normalize gradient
-            gradient = gradient - gradient.min()
-            gradient /= gradient.max()
-            im = format_np_output(gradient)
-            im = Image.fromarray(im)
-
-            if args.layer == -1:
-                e = args.output.split(".")
-                output = "%s_%02d.%s" % (".".join(e[:-1]), i, e[-1])
+            if args.gif:
+                outputs.append(heatmap_img)
+                logger.info("Added layer %d (%s) to GIF" % (i, name))
             else:
-                output = args.output 
-
-            im.save(output)
-            logger.info("GradCam for layer %d saved in %s" % (i, output))
+                output = os.path.join(args.path, "gradcam_%s__%02d_%s.png" % (input_name, i, name))
+                # TODO: remove alpha channel if present?
+                heatmap_img.save(output)
+                logger.info("GradCam saved in %s" % output)
         except Exception as e:
             logger.error("An error occured calculating the gradcam in layer %d: %s" % (i, e))
+            logger.exception(e)
+
+    if args.gif and len(outputs) > 1:
+        name = os.path.join(args.path, "gradcam_%s.gif" % input_name)
+        logger.info("Saving GIF in %s" % name)
+        outputs[0].save(name,
+                        save_all=True,
+                        append_images=outputs[1:],
+                        duration=1000,
+                        loop=0)

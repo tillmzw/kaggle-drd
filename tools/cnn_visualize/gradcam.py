@@ -84,10 +84,11 @@ class GradCam():
         for i, w in enumerate(weights):
             cam += w * target[i, :, :]
         cam = np.maximum(cam, 0)
-        cam = (cam - np.min(cam)) / (np.max(cam) - np.min(cam))  # Normalize between 0-1
+        if (np.max(cam) - np.min(cam)) != 0:
+            cam = (cam - np.min(cam)) / (np.max(cam) - np.min(cam))  # Normalize between 0-1
         cam = np.uint8(cam * 255)  # Scale between 0-255 to visualize
-        cam = np.uint8(Image.fromarray(cam).resize((input_image.shape[2],
-                       input_image.shape[3]), Image.ANTIALIAS))/255
+        #cam = np.uint8(Image.fromarray(cam).resize((input_image.shape[2],
+        #               input_image.shape[3]), Image.ANTIALIAS))/255
         # ^ I am extremely unhappy with this line. Originally resizing was done in cv2 which
         # supports resizing numpy matrices with antialiasing, however,
         # when I moved the repository to PIL, this option was out of the window.
@@ -96,8 +97,8 @@ class GradCam():
         # If there is a more beautiful way, do not hesitate to send a PR.
 
         # You can also use the code below instead of the code line above, suggested by @ ptschandl
-        # from scipy.ndimage.interpolation import zoom
-        # cam = zoom(cam, np.array(input_image[0].shape[1:])/np.array(cam.shape))
+        from scipy.ndimage.interpolation import zoom
+        cam = zoom(cam, np.array(input_image[0].shape[1:])/np.array(cam.shape))
         return cam
 
 
