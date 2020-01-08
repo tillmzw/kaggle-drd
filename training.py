@@ -104,7 +104,12 @@ class Trainer():
                 logger.info("Saved intermediate model state file to %s" % intermed_save)
                 torch.save(model.state_dict(), intermed_save)
 
-            logger.info("Training iteration took %s" % time.strftime("%M:%S", time.gmtime(time.time() - start)))
+            # seconds -> float
+            tt = time.time() - start
+            # minutes with seconds as decimal
+            ett = tt // 60 + ((tt % 60) / 60)
+            logger.info("Training iteration took %.2f minutes" % ett)
+            wandb.log({"epoch_training_time": ett})
         logger.debug('Finished Training')
 
         if state_file:
