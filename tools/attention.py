@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import os
 import argparse
 import logging
@@ -8,7 +9,7 @@ from PIL import Image
 import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from ..model import DRDNet
+from model import DRDNet
 from cnn_visualize.misc_functions import (preprocess_image,
                                           convert_to_grayscale,
                                           format_np_output)
@@ -77,6 +78,7 @@ if __name__ == '__main__':
             cam_gb = guided_grad_cam(cam.T, guided_grads)
             gradient = convert_to_grayscale(cam_gb)
 
+            # normalize gradient
             gradient = gradient - gradient.min()
             gradient /= gradient.max()
             im = format_np_output(gradient)
