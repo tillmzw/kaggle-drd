@@ -5,7 +5,7 @@ import csv
 import logging
 import torch
 import numpy as np
-from sklearn.metrics import cohen_kappa_score
+from sklearn.metrics import cohen_kappa_score, confusion_matrix
 
 
 logger = logging.getLogger(__name__)
@@ -29,12 +29,12 @@ def quadratic_kappa(y_hat, y, classes=5):
     return torch.tensor(cohen_kappa_score(y_hat_max, y, weights='quadratic', labels=np.array(range(classes))))
 
 
-def validate(net, dataloader, result_file=os.devnull):
+def validate(net, dataloader):
     """Count the number of correct and incorrect predictions made by `net` on `dataloader`.
     Writes a CSV to `result_file` containing the predicted and true label for every image.
-    Returns a percentage accuracy.
+    Returns a percentage accuracy, Cohen's Kappa and a confusion matrix.
     """
-    logger.info("Starting validation against test set with %d batches, writing result to %s" % (len(dataloader), result_file))
+    logger.info("Starting validation against test set")
     total, correct = 0, 0
 
     # set the network to eval mode
@@ -44,37 +44,31 @@ def validate(net, dataloader, result_file=os.devnull):
     model_device = next(net.parameters()).device
 
     # TODO: use sklearn.metrics.accuracy_score?
-
-    # TODO: is there a better way to do this? 
+    # TODO: is there a better way to do this?
     predictions = torch.tensor(data=(), dtype=torch.int64).to(model_device)
     truth = torch.tensor(data=(), dtype=torch.int64).to(model_device)
 
-    # TODO: no one needs this CSV?
-    with open(result_file, "w", encoding="utf_8") as csvfile:
-        csv_writer = csv.DictWriter(csvfile, delimiter=",", fieldnames=("name", "true_label", "predicted_label"))
-        csv_writer.writeheader()
-        with torch.no_grad():
-            for i, data in enumerate(dataloader):
-                sample = (i + 1) * dataloader.batch_size
-                inputs, names, labels = data
+    with torch.no_grad():
+        for i, data in enumerate(dataloader):
+            sample = (i + 1) * dataloader.batch_size
+            inputs, names, labels = data
 
-                inputs = inputs.to(model_device)
-                labels = labels.to(model_device)
+            inputs = inputs.to(model_device)
+            labels = labels.to(model_device)
 
-                outputs = net(inputs)
-                _, predicted = torch.max(outputs.data, 1)
-                
-                predictions = torch.cat((predictions, predicted))
-                truth = torch.cat((truth, labels))
+            outputs = net(inputs)
+            _, predicted = torch.max(outputs.data, 1)
 
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-                for name, true_label, predicted_label in zip(names, labels, predicted):
-                    csv_writer.writerow({
-                        "name": name,
-                        "true_label": true_label.item(),
-                        "predicted_label": predicted_label.item()
-                    })
+            predictions = torch.cat((predictions, predicted))
+            truth = torch.cat((truth, labels))
+
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
 
     acc = 100 * correct / total
-    return acc, quadratic_kappa(predictions, truth)
+    # TODO: pull sample_weight from model?
+    # make sure sklearn doesn't try to work on a CUDA device 
+    confusion = confusion_matrix(y_true=truth.to("cpu"), y_pred=predictions.to("cpu"), sample_weight=None)
+    # normalize such that the sum of every row is 1
+    confusion = confusion / confusion.sum(axis=1, keepdims=True)
+    return acc, quadratic_kappa(predictions, truth), confusion
