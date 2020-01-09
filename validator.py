@@ -67,7 +67,8 @@ def validate(net, dataloader):
 
     acc = 100 * correct / total
     # TODO: pull sample_weight from model?
-    confusion = confusion_matrix(y_true=truth, y_pred=predictions, sample_weight=None)
+    # make sure sklearn doesn't try to work on a CUDA device 
+    confusion = confusion_matrix(y_true=truth.to("cpu"), y_pred=predictions.to("cpu"), sample_weight=None)
     # normalize such that the sum of every row is 1
     confusion = confusion / confusion.sum(axis=1, keepdims=True)
     return acc, quadratic_kappa(predictions, truth), confusion
