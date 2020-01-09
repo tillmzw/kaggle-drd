@@ -44,8 +44,7 @@ def validate(net, dataloader):
     model_device = next(net.parameters()).device
 
     # TODO: use sklearn.metrics.accuracy_score?
-
-    # TODO: is there a better way to do this? 
+    # TODO: is there a better way to do this?
     predictions = torch.tensor(data=(), dtype=torch.int64).to(model_device)
     truth = torch.tensor(data=(), dtype=torch.int64).to(model_device)
 
@@ -59,14 +58,16 @@ def validate(net, dataloader):
 
             outputs = net(inputs)
             _, predicted = torch.max(outputs.data, 1)
-            
+
             predictions = torch.cat((predictions, predicted))
             truth = torch.cat((truth, labels))
 
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-    
+
     acc = 100 * correct / total
     # TODO: pull sample_weight from model?
     confusion = confusion_matrix(y_true=truth, y_pred=predictions, sample_weight=None)
+    # normalize such that the sum of every row is 1
+    confusion = confusion / confusion.sum(axis=1, keepdims=True)
     return acc, quadratic_kappa(predictions, truth), confusion

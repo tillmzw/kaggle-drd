@@ -4,16 +4,18 @@ import sys
 import os
 import logging
 import argparse
-import datetime
+import multiprocessing
+import tempfile
+
 import torch
-import torchvision
 import wandb
 from torch.utils.data import DataLoader
-import multiprocessing
+import tabulate
 
 from model import DRDNet as Net
 from dataset import RetinopathyDataset
 import training
+import utils
 from validator import validate
 
 
@@ -102,13 +104,25 @@ if __name__ == "__main__":
         if not os.path.isfile(args.state):
             raise RuntimeError("State \"%s\" is not a file" % args.state)
         logger.info("Loading model state from %s" % args.state)
-        net.load_state_dict(torch.load(args.state))
+        net.load_state_dict(torch.load(args.state, map_location=torch.device(args.device)))
 
     if args.validate:
         acc, kappa, confusion = validate(net, testloader)
+        # log the confusion matrix
         logger.info("Final validation run: %05.2f%% accuracy, kappa = % 04.2f" % (acc, kappa))
         logger.info("Confusion matrix:")
-        logger.info("|| {:^5d} | {:^5d} | {:^5d} | {:^5d} | {:^5d} ||".format(*list(range(5))))
-        logger.info("||---------------------------------------||")
-        for trues in confusion:
-            logger.info("|| {:^5d} | {:^5d} | {:^5d} | {:^5d} | {:^5d} ||".format(*trues))
+        # because we plot the indices, the first header item should be empty for clarity
+        headers = (" ",) + tuple(range(confusion.shape[0] + 1))
+        table = tabulate.tabulate(confusion, headers, showindex="always", tablefmt="fancy_grid")
+        for line in table.split("\n"):
+            logger.info(line)
+
+        # create a plot from the confusion matrix
+        plt_file = tempfile.NamedTemporaryFile(delete=False)
+        try:
+            plot = utils.plot_confusion_matrix(confusion)
+            plot.savefig(plt_file)
+            logger.info("Created plot file in %s" % plt_file.name)
+        finally:
+            logger.info("Deleting temporary plot file")
+            os.remove(plt_file.name)

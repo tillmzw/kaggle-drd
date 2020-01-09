@@ -6,3 +6,4 @@ pandas
 sklearn
 numpydoc
 wandb
+tabulate
