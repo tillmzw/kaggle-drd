@@ -77,3 +77,16 @@ def plot_confusion_matrix(confusion):
     plt.setp(ax.get_xticklabels(), rotation="horizontal")
 
     return plt
+
+
+def plot_to_pil(plt, format="png"):
+    import io
+    from PIL import Image
+    buf = io.BytesIO()
+    plt.savefig(buf, format=format)
+    buf.seek(0)
+    pil = Image.open(buf)
+    # copy the buffer's contents and close the buffer
+    pil.load()
+    buf.close()
+    return pil

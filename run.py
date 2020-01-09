@@ -117,12 +117,11 @@ if __name__ == "__main__":
         for line in table.split("\n"):
             logger.info(line)
 
-        # create a plot from the confusion matrix
-        plt_file = tempfile.NamedTemporaryFile(delete=False)
-        try:
+        if not args.train:
+            # create a plot from the confusion matrix if we dont already create them during training
+            logger.info("Creating confusion matrix plot")
             plot = utils.plot_confusion_matrix(confusion)
-            plot.savefig(plt_file)
-            logger.info("Created plot file in %s" % plt_file.name)
-        finally:
-            logger.info("Deleting temporary plot file")
-            os.remove(plt_file.name)
+            implot = utils.plot_to_pil(plot)
+            wandb.log({"confusion_matrix": wandb.Image(implot)})
+        else:
+            logger.info("Skipping confusion matrix plot, were already created during training")

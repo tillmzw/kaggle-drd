@@ -3,6 +3,7 @@
 import logging
 import datetime
 import time
+import tempfile
 import os
 import torch
 import torch.nn as nn
@@ -100,7 +101,7 @@ class Trainer():
             if validation_dataloader:
                 validation_start = time.time()
                 try:
-                    validation_acc, validation_kappa, _ = validator.validate(model, validation_dataloader)
+                    validation_acc, validation_kappa, confusion = validator.validate(model, validation_dataloader)
                 except Exception as e:
                     logger.error("While validating during training, an error occured:")
                     logger.exception(e)
@@ -114,6 +115,12 @@ class Trainer():
                     logger.info("Validation took %.2f minutes (~ %.0f seconds), or %.4f seconds per image" % (vtt, vtt * 60, vtt_image))
                     wandb.log({"epoch_training_validation_time_abs": vtt}, step=step)
                     wandb.log({"epoch_training_validation_time_image": vtt_image}, step=step)
+
+                    # create a plot from the confusion matrix
+                    logger.info("Creating confusion matrix plot")
+                    plot = utils.plot_confusion_matrix(confusion)
+                    implot = utils.plot_to_pil(plot)
+                    wandb.log({"epoch_training_confusion_matrix": wandb.Image(implot)}, step=step)
 
             if state_file:
                 # save intermediate model
