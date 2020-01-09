@@ -27,9 +27,11 @@ if __name__ == '__main__':
                         format=('%(asctime)s %(levelname)8s %(name)10s %(lineno)3d -- %(message)s'),
                         datefmt="%H:%M:%S")
 
+    this_path = os.path.relpath(os.path.dirname(os.path.abspath(__file__)))
+    default_model = os.path.join(this_path, "model.pth")
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--path', help="Path for output images", default=".")
-    parser.add_argument('-s', '--state', help="Model state file to load")
+    parser.add_argument('-p', '--path', help="Path for output images", metavar=this_path, default=this_path)
+    parser.add_argument('-s', '--state', help="Model state file to load", metavar=default_model, default=default_model)
     parser.add_argument('-l', '--layer', type=int, default=-1, help="For which layer to generate a gradcam. Defaults to all.")
     # `class` is a reserved keyword
     parser.add_argument('-c', '--class', type=int, default=None, help="Class of input image. If left blank, the most probable class from the predictions will be used.", dest="target_class")
