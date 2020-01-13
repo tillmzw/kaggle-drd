@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class DRDNet(nn.Module):
     def __init__(self):
         super().__init__()
-        resnet = models.resnet50(pretrained=True)
+        resnet = models.resnet101(pretrained=False)
         resnet.fc = Identity()
         self.features = resnet
         self.classifier = nn.Linear(512 * 4, 5)
