@@ -17,9 +17,6 @@ logger = logging.getLogger(__name__)
 
 
 class RetinopathyDataset(Dataset):
-    # TODO: Optimize data loading
-    # TODO: Load data into GPU memory?
-    # TODO: ImageFolder --> classes are folders, might be worth to restructure
     def __init__(self, labels_file, path, limit=None, device="cpu"):
         assert os.path.isfile(labels_file), "No such file: %s" % labels_file
         assert os.path.isdir(path), "No such directory: %s" % path
@@ -86,12 +83,10 @@ class RetinopathyDataset(Dataset):
         return image
 
     def classes(self, unique=True):
-        # TODO: this sometimes seems to omit some classes, which causes RuntimeErrors due to missing classes
-        # during training
         labels = np.squeeze(self._labels["level"].to_numpy())
         if unique:
             labels = np.unique(labels)
-        return labels #torch.from_numpy(labels).to(self._device)
+        return labels
 
     def class_weights(self):
         """Calculate the weight for each class in this dataset. Returns a 1D tensor."""

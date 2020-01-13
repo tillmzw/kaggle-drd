@@ -80,9 +80,9 @@ if __name__ == "__main__":
     data_dir = os.path.join(args.dir, "data")
 
     if args.validate:
-        testset = RetinopathyDataset(
-                os.path.join(data_dir, "testLabels.csv"), os.path.join(data_dir, "test"), 
-                limit=args.validation_limit)
+        testset = RetinopathyDataset(os.path.join(data_dir, "testLabels.csv"),
+                                     os.path.join(data_dir, "test"),
+                                     limit=args.validation_limit)
         testloader = DataLoader(testset, batch_size=args.batch, num_workers=CPU_COUNT, shuffle=True)
     else:
         testloader = None
@@ -90,14 +90,14 @@ if __name__ == "__main__":
     if args.train:
         logger.info("Starting training")
 
-        trainset = RetinopathyDataset(
-                os.path.join(data_dir, "trainLabels.csv"), os.path.join(data_dir, "train"), 
-                limit=args.limit)
+        trainset = RetinopathyDataset(os.path.join(data_dir, "trainLabels.csv"),
+                                      os.path.join(data_dir, "train"),
+                                      limit=args.limit)
 
         trainloader = DataLoader(trainset, batch_size=args.batch, num_workers=CPU_COUNT, shuffle=True)
 
         trainer = training.AdamTrainer(epochs=args.epochs)
-        trainer.train(net, trainloader, args.state, validation_dataloader=testloader) 
+        trainer.train(net, trainloader, args.state, validation_dataloader=testloader)
     else:
         if not args.state:
             raise RuntimeError("Need a state file if training is skipped")
