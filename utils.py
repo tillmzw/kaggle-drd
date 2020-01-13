@@ -52,7 +52,7 @@ def plot_confusion_matrix(confusion):
     text = np.empty_like(confusion, dtype=object)
     display_labels = ("class %d" % c for c in range(n_classes))
     fig, ax = plt.subplots()
-    im = ax.imshow(confusion, interpolation="nearest", cmap="viridis")
+    im = ax.imshow(confusion, interpolation="nearest", cmap="viridis", vmin=0, vmax=1)
     cmap_min, cmap_max = im.cmap(0), im.cmap(256)
     values_format = ".2g"
     # choose an appropriate color for the text, based on background color
