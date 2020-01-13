@@ -36,7 +36,7 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose', action="store_true", default=False)
     parser.add_argument('-i', '--info', action="store_true", default=False, help="Add more info to every image created")
     parser.add_argument('--cmap', default="rainbow", metavar="rainbow", help="Use this color map for plotting. Be advised that the histograms work best if the color scale is clearly separable in R, G and B. See https://matplotlib.org/examples/color/colormaps_reference.html")
-    parser.add_argument('input', help="Input image")
+    parser.add_argument('inputs', nargs="+", help="Input image(s)")
 
     args = parser.parse_args()
 
@@ -50,67 +50,69 @@ if __name__ == '__main__':
     if not os.path.isfile(args.state):
         raise RuntimeError("Model state file does not exist: %s" % args.state)
 
-    if not os.path.isfile(args.input):
-        raise RuntimeError("Input file doesn't exist: %s" % args.input)
+    for input_ in args.inputs:
+        if not os.path.isfile(input_):
+            raise RuntimeError("Input file doesn't exist: %s" % input_)
 
-    input_name = ".".join(os.path.basename(args.input).split(".")[:-1])
+    for input_ in args.inputs:
+        input_name = ".".join(os.path.basename(input_).split(".")[:-1])
 
-    logger.info("Generating activation map of %s in %s" % (args.input, args.path))
+        logger.info("Generating activation map of %s in %s" % (input_, args.path))
 
-    model = DRDNet()
-    # always keep this in CPU, because for single images this is fast enough
-    model.load_state_dict(torch.load(args.state, map_location=torch.device('cpu')))
+        model = DRDNet()
+        # always keep this in CPU, because for single images this is fast enough
+        model.load_state_dict(torch.load(args.state, map_location=torch.device('cpu')))
 
-    orig_image = Image.open(args.input).convert("RGB")
-    prep_img = preprocess_image(orig_image)
+        orig_image = Image.open(input_).convert("RGB")
+        prep_img = preprocess_image(orig_image)
 
-    mods = model.features._modules
+        mods = model.features._modules
 
-    # take all layers
-    layer_cams = (
-        (idx, mod, GradCam(model, target_layer=idx)) for idx, mod in enumerate(mods)
-    )
+        # take all layers
+        layer_cams = (
+            (idx, mod, GradCam(model, target_layer=idx)) for idx, mod in enumerate(mods)
+        )
 
-    if 0 <= args.layer <= len(mods):
-        # remove all layers not requested. slow, but ¯\_(ツ)_/¯
-        layer_cams = filter(lambda el: args.layer == el[0], layer_cams)
+        if 0 <= args.layer <= len(mods):
+            # remove all layers not requested. slow, but ¯\_(ツ)_/¯
+            layer_cams = filter(lambda el: args.layer == el[0], layer_cams)
 
-    outputs = []
-    for i, name, gcv2 in layer_cams:
-        try:
-            # Generate cam mask
-            activation_map = gcv2.generate_cam(prep_img, args.target_class)
+        outputs = []
+        for i, name, gcv2 in layer_cams:
+            try:
+                # Generate cam mask
+                activation_map = gcv2.generate_cam(prep_img, args.target_class)
 
-            # TODO: P: am i discarding negative values?
-            heatmap, heatmap_img = apply_colormap_on_image(orig_image, activation_map, args.cmap)
+                # TODO: P: am i discarding negative values?
+                heatmap, heatmap_img = apply_colormap_on_image(orig_image, activation_map, args.cmap)
 
-            if not args.no_text:
-                draw = ImageDraw.Draw(heatmap_img)
-                draw.text((0, 0), "%02d: %s" % (i, name))
+                if not args.no_text:
+                    draw = ImageDraw.Draw(heatmap_img)
+                    draw.text((0, 0), "%02d: %s" % (i, name))
 
-            if args.info:
-                heatmap_img = compound_img_hist(heatmap_img, colorbar=args.cmap)
+                if args.info:
+                    heatmap_img = compound_img_hist(heatmap_img, colorbar=args.cmap)
 
-            if args.gif:
-                outputs.append(heatmap_img)
-                logger.info("Added layer %d (%s) to GIF" % (i, name))
-            else:
-                output = os.path.join(args.path, "gradcam_%s__%02d_%s.png" % (input_name, i, name))
-                # TODO: remove alpha channel if present?
-                heatmap_img.save(output)
-                logger.info("GradCam saved in %s" % output)
+                if args.gif:
+                    outputs.append(heatmap_img)
+                    logger.info("Added layer %d (%s) to GIF" % (i, name))
+                else:
+                    output = os.path.join(args.path, "gradcam_%s__%02d_%s.png" % (input_name, i, name))
+                    # TODO: remove alpha channel if present?
+                    heatmap_img.save(output)
+                    logger.info("GradCam saved in %s" % output)
 
-        except Exception as e:
-            logger.error("An error occured calculating the gradcam in layer %d: %s" % (i, e))
-            logger.exception(e)
+            except Exception as e:
+                logger.error("An error occured calculating the gradcam in layer %d: %s" % (i, e))
+                logger.exception(e)
 
-    if args.gif and len(outputs) > 1:
-        name = os.path.join(args.path, "gradcam_%s.gif" % input_name)
-        logger.info("Saving GIF in %s" % name)
-        outputs[0].save(name,
-                        save_all=True,
-                        append_images=outputs[1:],
-                        duration=1000,
-                        loop=0)
+        if args.gif and len(outputs) > 1:
+            name = os.path.join(args.path, "gradcam_%s.gif" % input_name)
+            logger.info("Saving GIF in %s" % name)
+            outputs[0].save(name,
+                            save_all=True,
+                            append_images=outputs[1:],
+                            duration=1000,
+                            loop=0)
 
 
