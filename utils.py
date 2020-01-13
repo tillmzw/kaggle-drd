@@ -90,3 +90,29 @@ def plot_to_pil(plt, format="png"):
     pil.load()
     buf.close()
     return pil
+
+
+def compound_img_hist(img, colorbar=None):
+    """Add a histogram below PIL Image `img` and return a PIL image"""
+    from matplotlib import pyplot as plt
+    import numpy as np
+    fig = plt.figure()
+    fig.add_subplot(2, 1, 1)
+    plt.imshow(img)
+    plt.axis('off')
+    if colorbar:
+        from matplotlib import cm
+        plt.colorbar(cm.ScalarMappable(cmap=colorbar), orientation='vertical')
+
+    fig.add_subplot(2, 1, 2)
+    for channel, color in zip(img.split(), ("r", "g", "b")):
+        logger.debug("Calculating histogram for channel %s" % color)
+        col_hist = channel.histogram()
+        plt.plot(col_hist, color=color, linestyle="-" if color == "r" else ":")
+        if color == "r":
+            # focus on the red channel
+            plt.ylim(np.min(col_hist), np.max(col_hist) * 1.1)
+
+    return plot_to_pil(plt)
+
+

@@ -10,6 +10,7 @@ import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from model import DRDNet
+from utils import compound_img_hist
 from cnn_visualize.misc_functions import (preprocess_image,
                                           convert_to_grayscale,
                                           apply_colormap_on_image,
@@ -33,6 +34,8 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--class', type=int, default=None, help="Class of input image. If left blank, the most probable class from the predictions will be used.", dest="target_class")
     parser.add_argument('-g', '--gif', action="store_true", default=False, help="Generate a GIF from all images instead of single images.")
     parser.add_argument('-v', '--verbose', action="store_true", default=False)
+    parser.add_argument('-i', '--info', action="store_true", default=False, help="Add more info to every image created")
+    parser.add_argument('--cmap', default="rainbow", metavar="rainbow", help="Use this color map for plotting. Be advised that the histograms work best if the color scale is clearly separable in R, G and B. See https://matplotlib.org/examples/color/colormaps_reference.html")
     parser.add_argument('input', help="Input image")
 
     args = parser.parse_args()
@@ -79,11 +82,14 @@ if __name__ == '__main__':
             activation_map = gcv2.generate_cam(prep_img, args.target_class)
 
             # TODO: P: am i discarding negative values?
-            heatmap, heatmap_img = apply_colormap_on_image(orig_image, activation_map, 'hsv')
+            heatmap, heatmap_img = apply_colormap_on_image(orig_image, activation_map, args.cmap)
 
             if not args.no_text:
                 draw = ImageDraw.Draw(heatmap_img)
                 draw.text((0, 0), "%02d: %s" % (i, name))
+
+            if args.info:
+                heatmap_img = compound_img_hist(heatmap_img, colorbar=args.cmap)
 
             if args.gif:
                 outputs.append(heatmap_img)
@@ -93,6 +99,7 @@ if __name__ == '__main__':
                 # TODO: remove alpha channel if present?
                 heatmap_img.save(output)
                 logger.info("GradCam saved in %s" % output)
+
         except Exception as e:
             logger.error("An error occured calculating the gradcam in layer %d: %s" % (i, e))
             logger.exception(e)
@@ -105,3 +112,5 @@ if __name__ == '__main__':
                         append_images=outputs[1:],
                         duration=1000,
                         loop=0)
+
+
