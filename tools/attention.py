@@ -5,7 +5,7 @@ import os
 import argparse
 import logging
 
-from PIL import Image
+from PIL import Image, ImageDraw
 import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,22 +23,23 @@ logger = logging.getLogger(__name__)
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG,
-                        format=('%(asctime)s %(levelname)8s %(name)10s %(lineno)3d -- %(message)s'),
-                        datefmt="%H:%M:%S")
-
     this_path = os.path.relpath(os.path.dirname(os.path.abspath(__file__)))
     default_model = os.path.join(this_path, "model.pth")
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--path', help="Path for output images", metavar=this_path, default=this_path)
     parser.add_argument('-s', '--state', help="Model state file to load", metavar=default_model, default=default_model)
     parser.add_argument('-l', '--layer', type=int, default=-1, help="For which layer to generate a gradcam. Defaults to all.")
-    # `class` is a reserved keyword
+    parser.add_argument('-t', '--no-text', action="store_true", default=False, help="Omit adding layer information on images")
     parser.add_argument('-c', '--class', type=int, default=None, help="Class of input image. If left blank, the most probable class from the predictions will be used.", dest="target_class")
     parser.add_argument('-g', '--gif', action="store_true", default=False, help="Generate a GIF from all images instead of single images.")
+    parser.add_argument('-v', '--verbose', action="store_true", default=False)
     parser.add_argument('input', help="Input image")
 
     args = parser.parse_args()
+
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
+                        format=('%(asctime)s %(levelname)8s %(name)10s %(lineno)3d -- %(message)s'),
+                        datefmt="%H:%M:%S")
 
     if not os.path.isdir(args.path):
         raise RuntimeError("Output is not a directory: %s" % args.path)
@@ -79,6 +80,10 @@ if __name__ == '__main__':
 
             # TODO: P: am i discarding negative values?
             heatmap, heatmap_img = apply_colormap_on_image(orig_image, activation_map, 'hsv')
+
+            if not args.no_text:
+                draw = ImageDraw.Draw(heatmap_img)
+                draw.text((0, 0), "%02d: %s" % (i, name))
 
             if args.gif:
                 outputs.append(heatmap_img)
