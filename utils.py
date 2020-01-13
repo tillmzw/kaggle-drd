@@ -83,11 +83,11 @@ def plot_to_pil(plt, format="png"):
     import io
     from PIL import Image
     buf = io.BytesIO()
-    plt.savefig(buf, format=format)
+    plt.savefig(buf, format=format, bbox_inches="tight")
+    plt.close()  # make sure matplotlib can GC the plot
     buf.seek(0)
     pil = Image.open(buf)
-    # copy the buffer's contents and close the buffer
-    pil.load()
+    pil.load()  # copy the buffer's contents so we can close the buffer
     buf.close()
     return pil
 
