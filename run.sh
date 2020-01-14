@@ -31,7 +31,7 @@ echo -e "======================================================"
 
 (
 	cd $BASEDIR
-	pip install --user -r requirements.txt > /dev/null
+	pip install --user --upgrade -r requirements.txt > /dev/null
 	./run.py \
 		--dir $BASEDIR \
 		--state $WORKDIR/model.pth \
